@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/docker/" />
+  <Folder Name="/Solution Items/" />
+  <Project Path="Concentrador.Api/Concentrador.Api.csproj" />
+  <Project Path="Pdv.Client/Pdv.Client.csproj" />
+  <Project Path="Pdv.Sync/Pdv.Sync.csproj" />
+</Solution>
