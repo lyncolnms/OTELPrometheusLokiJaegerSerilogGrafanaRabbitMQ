@@ -1,0 +1,128 @@
+services:
+  # =========================
+  # RabbitMQ (broker central)
+  # =========================
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"      # AMQP
+      - "15672:15672"    # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbitmq_prometheus true"
+    networks:
+      - observability
+
+  # =========================
+  # RabbitMQ (broker Local)
+  # =========================
+  rabbitmq-local:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq-local
+    ports:
+      - "5673:5672"      # AMQP (porta diferente para evitar conflito)
+      - "15673:15672"    # Management UI (porta diferente para evitar conflito)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbitmq_prometheus true"
+    networks:
+      - observability
+
+  # =========================
+  # Prometheus
+  # =========================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    networks:
+      - observability
+
+  # =========================
+  # Loki (logs)
+  # =========================
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki
+    command: [ "-config.file=/etc/loki/local-config.yaml" ]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./docker/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
+    networks:
+      - observability
+
+  # =========================
+  # Grafana
+  # =========================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    depends_on:
+      - prometheus
+      - loki
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    networks:
+      - observability
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+  # =========================
+  # Concentrador.Api (PoC)
+  # =========================
+  concentrador-api:
+    image: concentrador.api:dev
+    container_name: concentrador-api
+    build:
+      context: .
+      dockerfile: ./Concentrador.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # URLs para Prometheus / Loki / RabbitMQ dentro da rede docker
+      OTEL_EXPORTER_PROMETHEUS_ENDPOINT: http://0.0.0.0:9464
+      LOKI_URL: http://loki:3100
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+      OTLP_ENDPOINT: http://jaeger:4317
+    ports:
+      - "5100:8080"      # HTTP (ajuste se seu Dockerfile usar outra porta)
+    depends_on:
+      - rabbitmq
+      - prometheus
+      - loki
+    networks:
+      - observability
+
+  # =========================
+  # Jaeger (tracing)
+  # =========================
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686"   # UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    networks:
+      - observability
+
+networks:
+  observability:
+    driver: bridge
+
+volumes:
+  grafana-data:

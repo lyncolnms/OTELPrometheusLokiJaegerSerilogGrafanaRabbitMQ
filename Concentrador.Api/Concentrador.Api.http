@@ -1,0 +1,6 @@
+@Concentrador.Api_HostAddress = http://localhost:5081
+
+GET {{Concentrador.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

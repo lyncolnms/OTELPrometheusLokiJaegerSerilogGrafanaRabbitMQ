@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # Scrape do próprio Prometheus
+  - job_name: "prometheus"
+    static_configs:
+      - targets: [ "prometheus:9090" ]
+
+  # Métricas da API do Concentrador (OpenTelemetry Prometheus AspNetCore)
+  - job_name: "concentrador-api"
+    static_configs:
+      - targets: [ "concentrador-api:8080" ]  # porta interna exposta pelo container
+        labels:
+          app: "concentrador-api"
+
+  # Métricas do RabbitMQ (usando o plugin Prometheus Exporter)
+  - job_name: "rabbitmq"
+    static_configs:
+      - targets: [ "rabbitmq:15692" ]
+
+  # Métricas do RabbitMQ LOCAL (usando o plugin Prometheus Exporter)
+  - job_name: "rabbitmq-local"
+    static_configs:
+      - targets: [ "rabbitmq-local:15692" ]
+        labels:
+          app: "rabbitmq-local"
